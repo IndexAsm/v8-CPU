@@ -5,6 +5,10 @@ import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles
 
+from program import memory, ORIGIN
+ 
+MAX_CYCLES = 10000
+
 
 @cocotb.test()
 async def test_project(dut):
@@ -33,6 +37,47 @@ async def test_project(dut):
 
     # The following assersion is just an example of how to check the output values.
     # Change it to match the actual expected output of your module:
+    mem = list(memory)
+
+    cycles = 0
+    while (int(dut.uio_out.value) & 0b10000) == 0:
+        addr = int(dut.uo_out.value)
+        if (int(dut.uio_out.value) & 0b10000000) == 0:
+            dut.uio_in.value = mem[addr]
+        else:
+            mem[addr] = int(dut.uio_out.value) & 0b1111
+        await ClockCycles(dut.clk, 1, False)
+ 
+        cycles += 1
+        assert cycles < MAX_CYCLES, "CPU never halted"
+ 
+    dut._log.info(f"CPU halted after {cycles} cycles")
+
+
+
+
+    """
+    memory = [0 for i in range(256)]
+
+
+    #memory[2] = 1;memory[3] = 0; memory[4] = 0b1101     # movai   0b1101
+    #memory[5] = 2;memory[6] = 0; memory[7] = 0b0010     # movbi   0b0010
+    #memory[8] = 3;memory[9] = 0;                        # addb
+    memory[2] = 0b1000; memory[3] = 0b0001; memory[4] = 0b0010      #movdsi     0b0010
+    memory[5] = 5; memory[6] = 0; memory[7] = 0b1000                # movamem   0b1000
+
+
+    memory[0b00101000] = 0b1001
+    
+    assert dut.uo_out.value == 2
+    while (int(dut.uio_out.value) & 0b10000 == 0):
+        if (int(dut.uio_out.value) & 0b10000000 == 0):
+            dut.uio_in.value = memory[dut.uo_out.value]
+        else: 
+            memory[dut.uo_out.value] = dut.uio_out.value & 0b1111
+        await ClockCycles(dut.clk, 1, False)
+    """
+    """
     assert dut.uo_out.value == 2
     dut.uio_in.value = 1
     await ClockCycles(dut.clk, 1, False)
@@ -66,7 +111,7 @@ async def test_project(dut):
     await ClockCycles(dut.clk, 2, False)
     assert dut.uo_out.value == 13
 
-
+    """
 
 
 

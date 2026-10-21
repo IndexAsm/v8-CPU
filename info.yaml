@@ -47,7 +47,7 @@ pinout:
   uio[1]: "io1"
   uio[2]: "io2"
   uio[3]: "io3"
-  uio[4]: "io4"
+  uio[4]: "int"
   uio[5]: "a8"
   uio[6]: "a9"
   uio[7]: "rw"

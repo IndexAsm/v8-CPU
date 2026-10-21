@@ -46,11 +46,32 @@ module tt_um_IndexAsm (
     localparam OPCODE_NOTB      =   8'd18;
     localparam OPCODE_INCA      =   8'd19;
     localparam OPCODE_DECA      =   8'd20;
-    localparam OPCODE_INCB      =   8'd20;
-    localparam OPCODE_DECB      =   8'd20;
-    localparam OPCODE_MOVCSI    =   8'd20;
-    localparam OPCODE_MOVDSI    =   8'd20;
-    localparam OPCODE_MOVSSI    =   8'd20;
+    localparam OPCODE_INCB      =   8'd21;
+    localparam OPCODE_DECB      =   8'd22;
+    localparam OPCODE_MOVCSI    =   8'd23;
+    localparam OPCODE_MOVDSI    =   8'd24;
+    localparam OPCODE_MOVSSI    =   8'd25;
+    localparam OPCODE_MOVAS     =   8'd26;
+    localparam OPCODE_MOVBS     =   8'd27;
+    localparam OPCODE_MOVSA     =   8'd28;
+    localparam OPCODE_MOVSB     =   8'd29;
+    localparam OPCODE_MOVSPI    =   8'd30;
+    localparam OPCODE_MOVBPI    =   8'd31;
+    localparam OPCODE_SUBSPI    =   8'd32;
+    localparam OPCODE_ADDSPI    =   8'd33;
+    localparam OPCODE_SUBBPI    =   8'd34;
+    localparam OPCODE_ADDBPI    =   8'd35;
+    localparam OPCODE_ADDAI     =   8'd36;
+    localparam OPCODE_SUBAI     =   8'd37;
+    localparam OPCODE_ADDBI     =   8'd38;
+    localparam OPCODE_SUBBI     =   8'd39;
+    localparam OPCODE_MOVSPA    =   8'd40;
+    localparam OPCODE_MOVASP    =   8'd41;
+    localparam OPCODE_MOVBPA    =   8'd42;
+    localparam OPCODE_MOVABP    =   8'd43;
+    localparam OPCODE_MOVSI     =   8'd44;
+    localparam OPCODE_MOVMEMA   =   8'd45;
+    localparam OPCODE_MOVMEMB   =   8'd46;
 
 
 
@@ -61,8 +82,8 @@ module tt_um_IndexAsm (
 
 
 
-    assign uio_oe[4] = 1'b0;
-    assign uio_out[4] = 1'b0;
+    assign uio_oe[4] = 1'b1;
+    
 
 
 
@@ -76,8 +97,10 @@ module tt_um_IndexAsm (
     wire    [3:0]   datain_bus;
 
     reg     rw;
+    reg     int_pin;
 
     assign  uio_out[7] = rw;
+    assign  uio_out[4] = int_pin;
 
 
     assign uo_out = address_bus[7:0];
@@ -108,6 +131,10 @@ module tt_um_IndexAsm (
     reg [3:0]   register_SS;
 
 
+
+    reg [3:0]   register_SP;
+    reg [3:0]   register_BP;
+
     always @ (posedge clk or negedge rst_n) begin
         if (rst_n == 1'b0) begin
             register_STATE <= STATE_FETCH;
@@ -124,11 +151,17 @@ module tt_um_IndexAsm (
             register_STATE_PART <= 2'b0;
             rw <= 1'b0;
             register_INST <= 8'b0;
+            int_pin <= 1'b0;
+
+            register_SP <= 4'b0;
+            register_BP <= 4'b0;
             
         end else begin
             case (register_STATE)
                 STATE_FETCH: begin
                     if (register_STATE_PART == 2'b00) begin
+                        rw <= 1'b0;
+                        datadir_bus[3:0] <= 4'b0000;
                         address_bus[3:0] <= register_IP;
                         address_bus[7:4] <= register_CS;
                         register_STATE_PART <= 2'b01;
@@ -138,7 +171,7 @@ module tt_um_IndexAsm (
                         register_STATE_PART <= 2'b10;
                     end else begin 
                         register_INST[7:4] <= datain_bus;
-                        register_IP <= register_IP + 4'b0010;
+                        {register_CS, register_IP} <= {register_CS, register_IP} + 8'd2;
                         register_STATE <= STATE_DECODE;
                         register_STATE_PART <= 2'b00;
                     end
@@ -147,7 +180,7 @@ module tt_um_IndexAsm (
                 STATE_DECODE: begin
                     case (register_INST)
                         OPCODE_HALT: begin
-
+                            int_pin <= 1'b1;
                         end
                         OPCODE_MOVAI: begin 
                             if (register_STATE_PART == 2'b00) begin
@@ -155,7 +188,7 @@ module tt_um_IndexAsm (
                                 address_bus[7:4] <= register_CS;
                                 register_STATE_PART <= 2'b1;
                             end else begin
-                                register_IP <= register_IP + 4'b1;
+                                {register_CS, register_IP} <= {register_CS, register_IP} + 8'd1;
                                 register_A <= datain_bus;
                                 register_STATE_PART <= 2'b0;
                                 register_STATE <= STATE_FETCH;
@@ -168,7 +201,7 @@ module tt_um_IndexAsm (
                                 address_bus[7:4] <= register_CS;
                                 register_STATE_PART <= 2'b1;
                             end else begin
-                                register_IP <= register_IP + 4'b1;
+                                {register_CS, register_IP} <= {register_CS, register_IP} + 8'd1;
                                 register_B <= datain_bus;
                                 register_STATE_PART <= 2'b0;
                                 register_STATE <= STATE_FETCH;
@@ -195,7 +228,7 @@ module tt_um_IndexAsm (
                                 address_bus[7:4] <= register_DS;
                                 register_STATE_PART <= 2'b10;
                             end else begin
-                                register_IP <= register_IP + 4'b1;
+                                {register_CS, register_IP} <= {register_CS, register_IP} + 8'd1;
                                 register_A <= datain_bus;
                                 register_STATE_PART <= 2'b0;
                                 register_STATE <= STATE_FETCH;
@@ -212,7 +245,7 @@ module tt_um_IndexAsm (
                                 address_bus[7:4] <= register_DS;
                                 register_STATE_PART <= 2'b10;
                             end else begin
-                                register_IP <= register_IP + 4'b1;
+                                {register_CS, register_IP} <= {register_CS, register_IP} + 8'd1;
                                 register_B <= datain_bus;
                                 register_STATE_PART <= 2'b0;
                                 register_STATE <= STATE_FETCH;
@@ -223,8 +256,29 @@ module tt_um_IndexAsm (
                             register_A <= register_B;
                             register_STATE <= STATE_FETCH;
                         end
+
                         OPCODE_MOVBA: begin
                             register_B <= register_A;
+                            register_STATE <= STATE_FETCH;
+                        end
+
+                        OPCODE_ANDAB: begin
+                            register_A <= register_A & register_B;
+                            register_STATE <= STATE_FETCH;
+                        end
+
+                        OPCODE_ORAB: begin
+                            register_A <= register_A | register_B;
+                            register_STATE <= STATE_FETCH;
+                        end
+
+                        OPCODE_NOTA: begin
+                            register_A <= ~register_A;
+                            register_STATE <= STATE_FETCH;
+                        end
+
+                        OPCODE_NOTB: begin
+                            register_B <= ~register_B;
                             register_STATE <= STATE_FETCH;
                         end
 
@@ -253,7 +307,7 @@ module tt_um_IndexAsm (
                                 address_bus[7:4] <= register_CS;
                                 register_STATE_PART <= 2'b1;
                             end else begin
-                                register_IP <= register_IP + 4'b1;
+                                {register_CS, register_IP} <= {register_CS, register_IP} + 8'd1;
                                 register_CS <= datain_bus;
                                 register_STATE_PART <= 2'b0;
                                 register_STATE <= STATE_FETCH;
@@ -266,7 +320,7 @@ module tt_um_IndexAsm (
                                 address_bus[7:4] <= register_CS;
                                 register_STATE_PART <= 2'b1;
                             end else begin
-                                register_IP <= register_IP + 4'b1;
+                                {register_CS, register_IP} <= {register_CS, register_IP} + 8'd1;
                                 register_DS <= datain_bus;
                                 register_STATE_PART <= 2'b0;
                                 register_STATE <= STATE_FETCH;
@@ -279,15 +333,217 @@ module tt_um_IndexAsm (
                                 address_bus[7:4] <= register_CS;
                                 register_STATE_PART <= 2'b1;
                             end else begin
-                                register_IP <= register_IP + 4'b1;
+                                {register_CS, register_IP} <= {register_CS, register_IP} + 8'd1;
                                 register_SS <= datain_bus;
                                 register_STATE_PART <= 2'b0;
                                 register_STATE <= STATE_FETCH;
                             end
                         end
 
+                        OPCODE_MOVAS: begin
+                            if (register_STATE_PART == 2'b00) begin
+                                address_bus[3:0] <= register_IP;
+                                address_bus[7:4] <= register_CS;
+                                register_STATE_PART <= 2'b1;
+                            end else if (register_STATE_PART == 2'b01) begin
+                                address_bus[3:0] <= register_BP - datain_bus;
+                                address_bus[7:4] <= register_SS;
+                                register_STATE_PART <= 2'b10;
+                            end else begin
+                                {register_CS, register_IP} <= {register_CS, register_IP} + 8'd1;
+                                register_A <= datain_bus;
+                                register_STATE_PART <= 2'b0;
+                                register_STATE <= STATE_FETCH;
+                            end
+                        end
+
+                        OPCODE_MOVBS: begin
+                            if (register_STATE_PART == 2'b00) begin
+                                address_bus[3:0] <= register_IP;
+                                address_bus[7:4] <= register_CS;
+                                register_STATE_PART <= 2'b1;
+                            end else if (register_STATE_PART == 2'b01) begin
+                                address_bus[3:0] <= register_BP - datain_bus;
+                                address_bus[7:4] <= register_SS;
+                                register_STATE_PART <= 2'b10;
+                            end else begin
+                                {register_CS, register_IP} <= {register_CS, register_IP} + 8'd1;
+                                register_B <= datain_bus;
+                                register_STATE_PART <= 2'b0;
+                                register_STATE <= STATE_FETCH;
+                            end
+                        end
+
+                        OPCODE_MOVSA: begin
+                            if (register_STATE_PART == 2'b00) begin
+                                address_bus[3:0] <= register_IP;
+                                address_bus[7:4] <= register_CS;
+                                register_STATE_PART <= 2'b1;
+                            end else if (register_STATE_PART == 2'b01) begin
+                                address_bus[3:0] <= register_BP - datain_bus;
+                                address_bus[7:4] <= register_SS;
+                                register_STATE_PART <= 2'b10;
+                            end else begin
+                                datadir_bus[3:0] <= 4'b1111;
+                                rw <= 1'b1;
+                                dataout_bus <= register_A;
+                                {register_CS, register_IP} <= {register_CS, register_IP} + 8'd1;
+                                register_STATE_PART <= 2'b0;
+                                register_STATE <= STATE_FETCH;
+                            end
+                        end
+
+                        OPCODE_MOVSB: begin
+                            if (register_STATE_PART == 2'b00) begin
+                                address_bus[3:0] <= register_IP;
+                                address_bus[7:4] <= register_CS;
+                                register_STATE_PART <= 2'b1;
+                            end else if (register_STATE_PART == 2'b01) begin
+                                address_bus[3:0] <= register_BP - datain_bus;
+                                address_bus[7:4] <= register_SS;
+                                register_STATE_PART <= 2'b10;
+                            end else begin
+                                datadir_bus[3:0] <= 4'b1111;
+                                dataout_bus <= register_B;
+                                rw <= 1'b1;
+                                {register_CS, register_IP} <= {register_CS, register_IP} + 8'd1;
+                                register_STATE_PART <= 2'b0;
+                                register_STATE <= STATE_FETCH;
+                            end
+                        end
+
+                        OPCODE_MOVSPI: begin 
+                            if (register_STATE_PART == 2'b00) begin
+                                address_bus[3:0] <= register_IP;
+                                address_bus[7:4] <= register_CS;
+                                register_STATE_PART <= 2'b1;
+                            end else begin
+                                {register_CS, register_IP} <= {register_CS, register_IP} + 8'd1;
+                                register_SP <= datain_bus;
+                                register_STATE_PART <= 2'b0;
+                                register_STATE <= STATE_FETCH;
+                            end
+                        end
+
+                        OPCODE_MOVBPI: begin 
+                            if (register_STATE_PART == 2'b00) begin
+                                address_bus[3:0] <= register_IP;
+                                address_bus[7:4] <= register_CS;
+                                register_STATE_PART <= 2'b1;
+                            end else begin
+                                {register_CS, register_IP} <= {register_CS, register_IP} + 8'd1;
+                                register_BP <= datain_bus;
+                                register_STATE_PART <= 2'b0;
+                                register_STATE <= STATE_FETCH;
+                            end
+                        end
+
+                        OPCODE_SUBSPI: begin 
+                            if (register_STATE_PART == 2'b00) begin
+                                address_bus[3:0] <= register_IP;
+                                address_bus[7:4] <= register_CS;
+                                register_STATE_PART <= 2'b1;
+                            end else begin
+                                {register_CS, register_IP} <= {register_CS, register_IP} + 8'd1;
+                                register_SP <= register_SP - datain_bus;
+                                register_STATE_PART <= 2'b0;
+                                register_STATE <= STATE_FETCH;
+                            end
+                        end
+
+                        OPCODE_ADDSPI: begin 
+                            if (register_STATE_PART == 2'b00) begin
+                                address_bus[3:0] <= register_IP;
+                                address_bus[7:4] <= register_CS;
+                                register_STATE_PART <= 2'b1;
+                            end else begin
+                                {register_CS, register_IP} <= {register_CS, register_IP} + 8'd1;
+                                register_SP <= register_SP + datain_bus;
+                                register_STATE_PART <= 2'b0;
+                                register_STATE <= STATE_FETCH;
+                            end
+                        end
+
+                        OPCODE_SUBBPI: begin 
+                            if (register_STATE_PART == 2'b00) begin
+                                address_bus[3:0] <= register_IP;
+                                address_bus[7:4] <= register_CS;
+                                register_STATE_PART <= 2'b1;
+                            end else begin
+                                {register_CS, register_IP} <= {register_CS, register_IP} + 8'd1;
+                                register_BP <= register_SP - datain_bus;
+                                register_STATE_PART <= 2'b0;
+                                register_STATE <= STATE_FETCH;
+                            end
+                        end
+
+                        OPCODE_ADDBPI: begin 
+                            if (register_STATE_PART == 2'b00) begin
+                                address_bus[3:0] <= register_IP;
+                                address_bus[7:4] <= register_CS;
+                                register_STATE_PART <= 2'b1;
+                            end else begin
+                                {register_CS, register_IP} <= {register_CS, register_IP} + 8'd1;
+                                register_BP <= register_SP + datain_bus;
+                                register_STATE_PART <= 2'b0;
+                                register_STATE <= STATE_FETCH;
+                            end
+                        end
+
+                        OPCODE_ADDAI: begin 
+                            if (register_STATE_PART == 2'b00) begin
+                                address_bus[3:0] <= register_IP;
+                                address_bus[7:4] <= register_CS;
+                                register_STATE_PART <= 2'b1;
+                            end else begin
+                                {register_CS, register_IP} <= {register_CS, register_IP} + 8'd1;
+                                register_A <= register_A + datain_bus;
+                                register_STATE_PART <= 2'b0;
+                                register_STATE <= STATE_FETCH;
+                            end
+                        end
+
+                        OPCODE_SUBAI: begin 
+                            if (register_STATE_PART == 2'b00) begin
+                                address_bus[3:0] <= register_IP;
+                                address_bus[7:4] <= register_CS;
+                                register_STATE_PART <= 2'b1;
+                            end else begin
+                                {register_CS, register_IP} <= {register_CS, register_IP} + 8'd1;
+                                register_A <= register_A - datain_bus;
+                                register_STATE_PART <= 2'b0;
+                                register_STATE <= STATE_FETCH;
+                            end
+                        end
+
+                        OPCODE_ADDBI: begin 
+                            if (register_STATE_PART == 2'b00) begin
+                                address_bus[3:0] <= register_IP;
+                                address_bus[7:4] <= register_CS;
+                                register_STATE_PART <= 2'b1;
+                            end else begin
+                                {register_CS, register_IP} <= {register_CS, register_IP} + 8'd1;
+                                register_B <= register_B + datain_bus;
+                                register_STATE_PART <= 2'b0;
+                                register_STATE <= STATE_FETCH;
+                            end
+                        end
+
+                        OPCODE_SUBBI: begin 
+                            if (register_STATE_PART == 2'b00) begin
+                                address_bus[3:0] <= register_IP;
+                                address_bus[7:4] <= register_CS;
+                                register_STATE_PART <= 2'b1;
+                            end else begin
+                                {register_CS, register_IP} <= {register_CS, register_IP} + 8'd1;
+                                register_B <= register_B - datain_bus;
+                                register_STATE_PART <= 2'b0;
+                                register_STATE <= STATE_FETCH;
+                            end
+                        end
+
                         default: begin
-                            register_IP <= register_IP + 4'd1;
+                            {register_CS, register_IP} <= {register_CS, register_IP} + 8'd1;
                             register_STATE <= STATE_FETCH;
                         end
                     endcase
